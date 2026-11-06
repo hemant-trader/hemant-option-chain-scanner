@@ -34,7 +34,7 @@ INDEX_CONFIG = {
     "SENSEX": {"key": "BSE_INDEX|SENSEX", "step": 100},
 }
 
-# ----------------- CSS FOR PULSING PRE-ALERT -----------------
+# ----------------- CSS FOR PULSING BADGES -----------------
 st.markdown("""
 <style>
 @keyframes pulseGreen {
@@ -42,13 +42,17 @@ st.markdown("""
     50% { background-color: rgba(46, 204, 113, 0.45); border-color: #00ff7f; }
     100% { background-color: rgba(46, 204, 113, 0.15); border-color: #2ecc71; }
 }
+@keyframes pulseGold {
+    0% { background-color: rgba(255, 215, 0, 0.15); border-color: #ffd700; }
+    50% { background-color: rgba(255, 215, 0, 0.45); border-color: #ffaa00; }
+    100% { background-color: rgba(255, 215, 0, 0.15); border-color: #ffd700; }
+}
 .pre-alert-flash {
     animation: pulseGreen 1.5s infinite;
     font-weight: bold;
 }
-.best-confirmed {
-    background-color: rgba(46, 204, 113, 0.30) !important;
-    color: #2ecc71 !important;
+.budget-flash {
+    animation: pulseGold 1.6s infinite;
     font-weight: bold;
 }
 </style>
@@ -111,7 +115,15 @@ if auth_code and not st.session_state.get("access_token"):
 st.sidebar.title("🎯 Matrix Control")
 selected_index = st.sidebar.selectbox("इंडेक्स चुनें", list(INDEX_CONFIG.keys()), index=0)
 auto_refresh = st.sidebar.checkbox("Auto Refresh (3s)", value=True)
-strikes_count = st.sidebar.slider("ATM के आसपास स्ट्राइक संख्या", 8, 26, 14, 2)
+strikes_count = st.sidebar.slider("ATM के आसपास स्ट्राइक संख्या", 10, 36, 20, 2)
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("💡 Signal Guide")
+st.sidebar.markdown("""
+- 💎 **BUDGET PICK**: ₹20 se ₹350 ke beech ki high-potential strike.
+- 🟢 **BEST SETUP**: Premium strike with high volume and stable Delta.
+- ⚡ **PRE-ALERT**: Volume surge / Breakout momentum trigger.
+""")
 
 st.sidebar.markdown("---")
 if not st.session_state.get("access_token"):
@@ -215,7 +227,7 @@ if spot_price > 0 and chain_data:
         <div><span style="color:#8892b0; font-size:11px;">SPOT PRICE</span><br><b style="font-size:20px; color:#ffffff;">₹{spot_price:,.2f}</b></div>
         <div><span style="color:#8892b0; font-size:11px;">ATM STRIKE</span><br><b style="font-size:19px; color:#64ffda;">{atm_strike}</b></div>
         <div><span style="color:#8892b0; font-size:11px;">EXPIRY</span><br><b style="font-size:17px; color:#ccd6f6;">{selected_expiry}</b></div>
-        <div><span style="color:#8892b0; font-size:11px;">STATUS</span><br><span style="background-color:#163828; color:#2ecc71; padding:2px 8px; border-radius:4px; font-weight:bold; font-size:12px;">ACTIVE GREEKS</span></div>
+        <div><span style="color:#8892b0; font-size:11px;">BUDGET TARGET</span><br><b style="font-size:17px; color:#ffd700;">₹20 - ₹350</b></div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -261,21 +273,31 @@ if spot_price > 0 and chain_data:
         c_type = "ATM" if stk == atm_strike else ("ITM" if stk < atm_strike else "OTM")
         p_type = "ATM" if stk == atm_strike else ("OTM" if stk < atm_strike else "ITM")
 
+        # General Institutional Score (for all price ranges)
         c_score = 0.0
-        if c_ltp >= 10.0 and c_spread <= 0.06:
-            vol_score = min(1.0, math.log10(max(10, c_vol)) / 5.5) * 40.0
-            delta_target = 0.58 if c_type == "ITM" else (0.50 if c_type == "ATM" else 0.38)
-            delta_score = max(0.0, 1.0 - (abs(c_delta - delta_target) / 0.20)) * 40.0
-            spread_score = max(0.0, 1.0 - (c_spread / 0.06)) * 20.0
+        if c_ltp >= 8.0 and c_spread <= 0.08:
+            vol_score = min(1.0, math.log10(max(10, c_vol)) / 5.5) * 45.0
+            delta_target = 0.55 if c_type == "ITM" else (0.50 if c_type == "ATM" else 0.35)
+            delta_score = max(0.0, 1.0 - (abs(c_delta - delta_target) / 0.22)) * 35.0
+            spread_score = max(0.0, 1.0 - (c_spread / 0.08)) * 20.0
             c_score = vol_score + delta_score + spread_score
 
         p_score = 0.0
-        if p_ltp >= 10.0 and p_spread <= 0.06:
-            vol_score = min(1.0, math.log10(max(10, p_vol)) / 5.5) * 40.0
-            delta_target = 0.58 if p_type == "ITM" else (0.50 if p_type == "ATM" else 0.38)
-            delta_score = max(0.0, 1.0 - (abs(p_delta - delta_target) / 0.20)) * 40.0
-            spread_score = max(0.0, 1.0 - (p_spread / 0.06)) * 20.0
+        if p_ltp >= 8.0 and p_spread <= 0.08:
+            vol_score = min(1.0, math.log10(max(10, p_vol)) / 5.5) * 45.0
+            delta_target = 0.55 if p_type == "ITM" else (0.50 if p_type == "ATM" else 0.35)
+            delta_score = max(0.0, 1.0 - (abs(p_delta - delta_target) / 0.22)) * 35.0
+            spread_score = max(0.0, 1.0 - (p_spread / 0.08)) * 20.0
             p_score = vol_score + delta_score + spread_score
+
+        # Dedicated Budget Score (Strictly ₹20 to ₹350)
+        c_budget_score = 0.0
+        if 20.0 <= c_ltp <= 350.0 and c_vol > 25000:
+            c_budget_score = c_score + (14.0 if 0.25 <= c_delta <= 0.55 else 6.0)
+
+        p_budget_score = 0.0
+        if 20.0 <= p_ltp <= 350.0 and p_vol > 25000:
+            p_budget_score = p_score + (14.0 if 0.25 <= p_delta <= 0.55 else 6.0)
 
         rows.append({
             "strike": stk,
@@ -286,11 +308,13 @@ if spot_price > 0 and chain_data:
             "c_oi": c_oi,
             "c_delta": c_delta,
             "c_score": c_score,
+            "c_budget_score": c_budget_score,
             "p_ltp": p_ltp,
             "p_vol": p_vol,
             "p_oi": p_oi,
             "p_delta": p_delta,
             "p_score": p_score,
+            "p_budget_score": p_budget_score,
             "dist": abs(stk - atm_strike)
         })
 
@@ -298,58 +322,7 @@ if spot_price > 0 and chain_data:
     focused = rows[:strikes_count]
     focused.sort(key=lambda x: x["strike"])
 
-    # ----------------- CRASH-FREE WINNER EVALUATION -----------------
-    def find_best_and_prealert(candidates):
-        if not candidates:
-            return None, None
-        sorted_cand = sorted(candidates, key=lambda x: x[1], reverse=True)
-        winner = sorted_cand[0] if sorted_cand[0][1] >= 65.0 else None
-        pre_alert = None
-        if not winner and len(sorted_cand) > 0 and sorted_cand[0][1] >= 52.0:
-            pre_alert = sorted_cand[0]
-        elif winner and len(sorted_cand) > 1 and sorted_cand[1][1] >= 55.0:
-            pre_alert = sorted_cand[1]
-        return winner, pre_alert
-
-    # Calls
-    c_itm_cands = [(r["strike"], r["c_score"]) for r in focused if r["c_type"] == "ITM" and r["dist"] <= step_size * 2]
-    c_atm_cands = [(r["strike"], r["c_score"]) for r in focused if r["c_type"] == "ATM"]
-    c_otm_cands = [(r["strike"], r["c_score"]) for r in focused if r["c_type"] == "OTM" and r["dist"] <= step_size * 2]
-
-    best_c_itm, pre_c_itm = find_best_and_prealert(c_itm_cands)
-    best_c_atm, pre_c_atm = find_best_and_prealert(c_atm_cands)
-    best_c_otm, pre_c_otm = find_best_and_prealert(c_otm_cands)
-
-    # Puts
-    p_itm_cands = [(r["strike"], r["p_score"]) for r in focused if r["p_type"] == "ITM" and r["dist"] <= step_size * 2]
-    p_atm_cands = [(r["strike"], r["p_score"]) for r in focused if r["p_type"] == "ATM"]
-    p_otm_cands = [(r["strike"], r["p_score"]) for r in focused if r["p_type"] == "OTM" and r["dist"] <= step_size * 2]
-
-    best_p_itm, pre_p_itm = find_best_and_prealert(p_itm_cands)
-    best_p_atm, pre_p_atm = find_best_and_prealert(p_atm_cands)
-    best_p_otm, pre_p_otm = find_best_and_prealert(p_otm_cands)
-
-    call_winners = {}
-    if best_c_itm: call_winners[best_c_itm[0]] = ("BEST ITM", "CONFIRMED")
-    elif pre_c_itm: call_winners[pre_c_itm[0]] = ("PRE-ALERT ITM", "PRE_ALERT")
-
-    if best_c_atm: call_winners[best_c_atm[0]] = ("BEST ATM", "CONFIRMED")
-    elif pre_c_atm: call_winners[pre_c_atm[0]] = ("PRE-ALERT ATM", "PRE_ALERT")
-
-    if best_c_otm: call_winners[best_c_otm[0]] = ("BEST OTM", "CONFIRMED")
-    elif pre_c_otm: call_winners[pre_c_otm[0]] = ("PRE-ALERT OTM", "PRE_ALERT")
-
-    put_winners = {}
-    if best_p_itm: put_winners[best_p_itm[0]] = ("BEST ITM", "CONFIRMED")
-    elif pre_p_itm: put_winners[pre_p_itm[0]] = ("PRE-ALERT ITM", "PRE_ALERT")
-
-    if best_p_atm: put_winners[best_p_atm[0]] = ("BEST ATM", "CONFIRMED")
-    elif pre_p_atm: put_winners[pre_p_atm[0]] = ("PRE-ALERT ATM", "PRE_ALERT")
-
-    if best_p_otm: put_winners[best_p_otm[0]] = ("BEST OTM", "CONFIRMED")
-    elif pre_p_otm: put_winners[pre_p_otm[0]] = ("PRE-ALERT OTM", "PRE_ALERT")
-
-    # ----------------- TABLE DISPLAY (FIXED RENDERING) -----------------
+    # ----------------- TABLE DISPLAY (ALL STRIKES + BUDGET HIGHLIGHTS) -----------------
     html_parts = []
     html_parts.append('<table style="width:100%; border-collapse:collapse; text-align:center; font-family:monospace; font-size:12.5px; background-color:#0b0f19;">')
     html_parts.append('<thead><tr style="background-color:#1e293b; color:#94a3b8; border-bottom:2px solid #334155;">')
@@ -368,29 +341,33 @@ if spot_price > 0 and chain_data:
 
     for r in focused:
         stk = r["strike"]
-        c_state = call_winners.get(stk)
-        p_state = put_winners.get(stk)
 
-        # Call styling
-        if c_state and c_state[1] == "CONFIRMED":
-            c_style = "background-color:rgba(46, 204, 113, 0.28); color:#2ecc71; font-weight:bold; border-left:4px solid #2ecc71;"
-            c_badge = f'<span style="background-color:#163828; border:1px solid #2ecc71; border-radius:4px; padding:2px 6px;">🟢 {c_state[0]}</span>'
-        elif c_state and c_state[1] == "PRE_ALERT":
+        # Call Signal Styling (Budget vs Best vs Pre-alert vs Normal)
+        if r["c_budget_score"] >= 62.0:
+            c_style = "background-color:rgba(255, 215, 0, 0.16); color:#ffd700; font-weight:bold; border-left:4px solid #ffd700;"
+            c_badge = f'<span class="budget-flash" style="background-color:#2a2505; border:1px solid #ffd700; border-radius:4px; padding:2px 6px;">💎 BUDGET {r["c_type"]}</span>'
+        elif r["c_score"] >= 65.0:
+            c_style = "background-color:rgba(46, 204, 113, 0.25); color:#2ecc71; font-weight:bold; border-left:4px solid #2ecc71;"
+            c_badge = f'<span style="background-color:#163828; border:1px solid #2ecc71; border-radius:4px; padding:2px 6px;">🟢 BEST {r["c_type"]}</span>'
+        elif r["c_score"] >= 50.0 or r["c_budget_score"] >= 50.0:
             c_style = "color:#2ecc71;"
-            c_badge = f'<span class="pre-alert-flash" style="border:1px dashed #2ecc71; border-radius:4px; padding:2px 6px;">⚡ {c_state[0]}</span>'
+            c_badge = f'<span class="pre-alert-flash" style="border:1px dashed #2ecc71; border-radius:4px; padding:2px 6px;">⚡ PRE-ALERT</span>'
         else:
-            c_style = "color:#ff6b6b;"
+            c_style = "color:#cbd5e1;"
             c_badge = f'<span style="color:#64748b;">{r["c_type"]}</span>'
 
-        # Put styling
-        if p_state and p_state[1] == "CONFIRMED":
-            p_style = "background-color:rgba(46, 204, 113, 0.28); color:#2ecc71; font-weight:bold; border-right:4px solid #2ecc71;"
-            p_badge = f'<span style="background-color:#163828; border:1px solid #2ecc71; border-radius:4px; padding:2px 6px;">🟢 {p_state[0]}</span>'
-        elif p_state and p_state[1] == "PRE_ALERT":
+        # Put Signal Styling (Budget vs Best vs Pre-alert vs Normal)
+        if r["p_budget_score"] >= 62.0:
+            p_style = "background-color:rgba(255, 215, 0, 0.16); color:#ffd700; font-weight:bold; border-right:4px solid #ffd700;"
+            p_badge = f'<span class="budget-flash" style="background-color:#2a2505; border:1px solid #ffd700; border-radius:4px; padding:2px 6px;">💎 BUDGET {r["p_type"]}</span>'
+        elif r["p_score"] >= 65.0:
+            p_style = "background-color:rgba(46, 204, 113, 0.25); color:#2ecc71; font-weight:bold; border-right:4px solid #2ecc71;"
+            p_badge = f'<span style="background-color:#163828; border:1px solid #2ecc71; border-radius:4px; padding:2px 6px;">🟢 BEST {r["p_type"]}</span>'
+        elif r["p_score"] >= 50.0 or r["p_budget_score"] >= 50.0:
             p_style = "color:#2ecc71;"
-            p_badge = f'<span class="pre-alert-flash" style="border:1px dashed #2ecc71; border-radius:4px; padding:2px 6px;">⚡ {p_state[0]}</span>'
+            p_badge = f'<span class="pre-alert-flash" style="border:1px dashed #2ecc71; border-radius:4px; padding:2px 6px;">⚡ PRE-ALERT</span>'
         else:
-            p_style = "color:#ff6b6b;"
+            p_style = "color:#cbd5e1;"
             p_badge = f'<span style="color:#64748b;">{r["p_type"]}</span>'
 
         mid_bg = "#1e293b; font-weight:bold; color:#64ffda;" if stk == atm_strike else "#0f172a; color:#f8fafc;"
