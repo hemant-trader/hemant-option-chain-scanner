@@ -85,7 +85,7 @@ def fetch_access_token(code):
         "grant_type": "authorization_code"
     }
     try:
-        res = requests.post(url, headers=headers, data=payload, timeout=5)
+        res = requests.post(url, headers=headers, data=payload, timeout=6)
         return res.json()
     except Exception as e:
         return {"error": str(e)}
@@ -93,24 +93,19 @@ def fetch_access_token(code):
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = load_token_disk()
 
+# Auto-capture OAuth code from URL
 query_params = st.query_params
 auth_code = query_params.get("code", None)
-incoming_state = query_params.get("state", None)
 
-if auth_code and "access_token" not in st.session_state:
-    expected_state = st.session_state.get("oauth_state")
-    if expected_state and incoming_state != expected_state:
-        st.error("OAuth State mismatch! Re-login required.")
-        st.stop()
+if auth_code and not st.session_state.get("access_token"):
+    res = fetch_access_token(auth_code)
+    if "access_token" in res:
+        st.session_state["access_token"] = res["access_token"]
+        save_token_disk(res)
+        st.query_params.clear()
+        st.rerun()
     else:
-        res = fetch_access_token(auth_code)
-        if "access_token" in res:
-            st.session_state["access_token"] = res["access_token"]
-            save_token_disk(res)
-            st.query_params.clear()
-            st.rerun()
-        else:
-            st.error(f"Login विफल: {res.get('message', res.get('error'))}")
+        st.error(f"Login विफल: {res.get('message', res.get('error'))}")
 
 # ----------------- SIDEBAR -----------------
 st.sidebar.title("🎯 Matrix Control")
@@ -132,10 +127,11 @@ if not st.session_state.get("access_token"):
     manual_code = st.sidebar.text_input("या Authorization Code यहाँ डालें:")
     if st.sidebar.button("Connect"):
         if manual_code:
-            res = fetch_access_token(manual_code)
+            res = fetch_access_token(manual_code.strip())
             if "access_token" in res:
                 st.session_state["access_token"] = res["access_token"]
                 save_token_disk(res)
+                st.query_params.clear()
                 st.rerun()
             else:
                 st.sidebar.error("अमान्य कोड")
@@ -144,7 +140,7 @@ else:
     if st.sidebar.button("Logout"):
         if os.path.exists(TOKEN_FILE):
             os.remove(TOKEN_FILE)
-        del st.session_state["access_token"]
+        st.session_state["access_token"] = None
         st.rerun()
 
 token = st.session_state.get("access_token")
@@ -265,8 +261,6 @@ if spot_price > 0 and chain_data:
         c_type = "ATM" if stk == atm_strike else ("ITM" if stk < atm_strike else "OTM")
         p_type = "ATM" if stk == atm_strike else ("OTM" if stk < atm_strike else "ITM")
 
-        # Multi-factor Institutional Scoring: Liquidity (40%) + Greeks/Delta (40%) + Spread (20%)
-        # Penny exclusion (< ₹10 rejected)
         c_score = 0.0
         if c_ltp >= 10.0 and c_spread <= 0.06:
             vol_score = min(1.0, math.log10(max(10, c_vol)) / 5.5) * 40.0
@@ -310,7 +304,6 @@ if spot_price > 0 and chain_data:
             return None, None
         sorted_cand = sorted(candidates, key=lambda x: x[1], reverse=True)
         winner = sorted_cand[0] if sorted_cand[0][1] >= 65.0 else None
-        # Pre-alert candidate (जिसका स्कोर 52 और 65 के बीच है और विनर बनने के करीब है)
         pre_alert = None
         if not winner and len(sorted_cand) > 0 and sorted_cand[0][1] >= 52.0:
             pre_alert = sorted_cand[0]
@@ -356,30 +349,29 @@ if spot_price > 0 and chain_data:
     if best_p_otm: put_winners[best_p_otm[0]] = ("BEST OTM", "CONFIRMED")
     elif pre_p_otm: put_winners[pre_p_otm[0]] = ("PRE-ALERT OTM", "PRE_ALERT")
 
-    # ----------------- TABLE DISPLAY -----------------
-    html = """
-    <table style="width:100%; border-collapse:collapse; text-align:center; font-family:monospace; font-size:12.5px;">
-        <tr style="background-color:#1e293b; color:#8892b0; border-bottom:2px solid #334155;">
-            <th style="padding:10px;">Call Signal</th>
-            <th>Delta (Δ)</th>
-            <th>Call LTP</th>
-            <th>Call Volume</th>
-            <th>Call OI</th>
-            <th style="background-color:#0f172a; color:#f8fafc; font-size:15px; width:120px;">STRIKE</th>
-            <th>Put OI</th>
-            <th>Put Volume</th>
-            <th>Put LTP</th>
-            <th>Delta (Δ)</th>
-            <th>Put Signal</th>
-        </tr>
-    """
+    # ----------------- TABLE DISPLAY (FIXED RENDERING) -----------------
+    html_parts = []
+    html_parts.append('<table style="width:100%; border-collapse:collapse; text-align:center; font-family:monospace; font-size:12.5px; background-color:#0b0f19;">')
+    html_parts.append('<thead><tr style="background-color:#1e293b; color:#94a3b8; border-bottom:2px solid #334155;">')
+    html_parts.append('<th style="padding:10px;">Call Signal</th>')
+    html_parts.append('<th>Delta (Δ)</th>')
+    html_parts.append('<th>Call LTP</th>')
+    html_parts.append('<th>Call Volume</th>')
+    html_parts.append('<th>Call OI</th>')
+    html_parts.append('<th style="background-color:#0f172a; color:#f8fafc; font-size:15px; width:120px;">STRIKE</th>')
+    html_parts.append('<th>Put OI</th>')
+    html_parts.append('<th>Put Volume</th>')
+    html_parts.append('<th>Put LTP</th>')
+    html_parts.append('<th>Delta (Δ)</th>')
+    html_parts.append('<th style="padding:10px;">Put Signal</th>')
+    html_parts.append('</tr></thead><tbody>')
 
     for r in focused:
         stk = r["strike"]
         c_state = call_winners.get(stk)
         p_state = put_winners.get(stk)
 
-        # Style Call side
+        # Call styling
         if c_state and c_state[1] == "CONFIRMED":
             c_style = "background-color:rgba(46, 204, 113, 0.28); color:#2ecc71; font-weight:bold; border-left:4px solid #2ecc71;"
             c_badge = f'<span style="background-color:#163828; border:1px solid #2ecc71; border-radius:4px; padding:2px 6px;">🟢 {c_state[0]}</span>'
@@ -390,7 +382,7 @@ if spot_price > 0 and chain_data:
             c_style = "color:#ff6b6b;"
             c_badge = f'<span style="color:#64748b;">{r["c_type"]}</span>'
 
-        # Style Put side
+        # Put styling
         if p_state and p_state[1] == "CONFIRMED":
             p_style = "background-color:rgba(46, 204, 113, 0.28); color:#2ecc71; font-weight:bold; border-right:4px solid #2ecc71;"
             p_badge = f'<span style="background-color:#163828; border:1px solid #2ecc71; border-radius:4px; padding:2px 6px;">🟢 {p_state[0]}</span>'
@@ -403,24 +395,26 @@ if spot_price > 0 and chain_data:
 
         mid_bg = "#1e293b; font-weight:bold; color:#64ffda;" if stk == atm_strike else "#0f172a; color:#f8fafc;"
 
-        html += f"""
-        <tr style="border-bottom:1px solid #1e293b;">
-            <td style="padding:7px; {c_style}">{c_badge}</td>
-            <td style="{c_style}">{r['c_delta']:.2f}</td>
-            <td style="{c_style}">₹{r['c_ltp']:.1f}</td>
-            <td style="{c_style}">{r['c_vol']:,}</td>
-            <td style="{c_style}">{r['c_oi']:,}</td>
-            <td style="background-color:{mid_bg}; font-size:14px;">{int(stk)}</td>
-            <td style="{p_style}">{r['p_oi']:,}</td>
-            <td style="{p_style}">{r['p_vol']:,}</td>
-            <td style="{p_style}">₹{r['p_ltp']:.1f}</td>
-            <td style="{p_style}">{r['p_delta']:.2f}</td>
-            <td style="padding:7px; {p_style}">{p_badge}</td>
-        </tr>
-        """
+        row_str = (
+            f'<tr style="border-bottom:1px solid #1e293b;">'
+            f'<td style="padding:7px; {c_style}">{c_badge}</td>'
+            f'<td style="{c_style}">{r["c_delta"]:.2f}</td>'
+            f'<td style="{c_style}">₹{r["c_ltp"]:.1f}</td>'
+            f'<td style="{c_style}">{r["c_vol"]:,}</td>'
+            f'<td style="{c_style}">{r["c_oi"]:,}</td>'
+            f'<td style="background-color:{mid_bg}; font-size:14px;">{int(stk)}</td>'
+            f'<td style="{p_style}">{r["p_oi"]:,}</td>'
+            f'<td style="{p_style}">{r["p_vol"]:,}</td>'
+            f'<td style="{p_style}">₹{r["p_ltp"]:.1f}</td>'
+            f'<td style="{p_style}">{r["p_delta"]:.2f}</td>'
+            f'<td style="padding:7px; {p_style}">{p_badge}</td>'
+            f'</tr>'
+        )
+        html_parts.append(row_str)
 
-    html += "</table>"
-    st.markdown(html, unsafe_allow_html=True)
+    html_parts.append('</tbody></table>')
+    table_rendered = "".join(html_parts)
+    st.markdown(table_rendered, unsafe_allow_html=True)
 
 if auto_refresh:
     time.sleep(3.0)
