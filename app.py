@@ -181,9 +181,9 @@ target_strike = st.sidebar.number_input("Active Strike (Track karne ke liye)", m
 st.sidebar.markdown("---")
 st.sidebar.subheader("💡 3 Master Signals Guide")
 st.sidebar.markdown("""
-- 🏆 **BEST STRIKE**: All institutional parameters matched (Gamma, Theta, IV, Spread, OI & Volume).
+- 🏆 **BEST STRIKE**: All 9 Institutional requirements matched.
 - 🚀 **ROCKET MOVE**: Fast Scalping OTM Explosion (High Delta Acceleration + Volume Surge).
-- 🔴 **EXIT / WEAK**: Setup requirement fail / Momentum collapse / Opposite trend.
+- 🔴 **EXIT / WEAK**: Only genuine 12%+ drop from peak / active breakdown.
 """)
 
 st.sidebar.markdown("---")
@@ -431,42 +431,49 @@ if spot_price > 0 and chain_data:
     c_vol_high = np.percentile(all_c_vols, 75) if len(all_c_vols) > 0 else 500000
     p_vol_high = np.percentile(all_p_vols, 75) if len(all_p_vols) > 0 else 500000
 
-    # ----------------- 3-SIGNAL LOGIC ENGINE -----------------
+    # ----------------- 3-SIGNAL LOGIC ENGINE (NO FALSE RED FLOOD) -----------------
     for r in rows:
         # === CALL SIDE EVALUATION ===
         c_tradeable = r["c_delta_valid"] and r["c_ltp"] >= 8.0 and r["c_spread"] <= 0.05 and r["c_oi"] >= 10000
 
         if c_tradeable and "BULLISH" in market_bias:
-            # 1) BEST STRIKE (High Institutional Quality)
+            # 1) BEST STRIKE (All 9 factors matched)
             c_is_best = (
                 (min_budget <= r["c_ltp"] <= max_budget) and
                 (r["c_vol"] >= c_vol_high) and
                 (r["c_oi"] >= 25000) and
                 (r["c_spread"] <= 0.025) and
                 (r["c_iv"] <= 60.0 or r["c_iv"] == 0.0) and
-                (0.12 <= r["c_delta"] <= 0.55) and
+                (0.10 <= r["c_delta"] <= 0.55) and
                 (overall_pcr >= 0.95)
             )
 
-            # 2) ROCKET MOVE (High Speed OTM Momentum)
+            # 2) ROCKET MOVE (High speed OTM Breakout)
             c_is_rocket = (
                 scalp_mode and
                 (0.08 <= r["c_delta"] <= 0.40) and
-                (r["c_vol"] >= c_vol_high * 0.85) and
+                (r["c_vol"] >= c_vol_high * 0.80) and
                 (r["c_spread"] <= 0.04) and
-                (min_budget <= r["c_ltp"] <= (max_budget * 1.25))
+                (min_budget <= r["c_ltp"] <= (max_budget * 1.35))
             )
 
             if c_is_best:
                 r["c_signal"] = "🏆 BEST STRIKE"
             elif c_is_rocket:
                 r["c_signal"] = "🚀 ROCKET MOVE"
-            else:
-                # Agar requirement meet na ho
+            elif r["c_peak"] > 0 and (r["c_peak"] - r["c_ltp"]) / r["c_peak"] >= 0.12 and r["c_vol"] >= 50000:
+                # 3) EXIT / WEAK (Sirf genuine 12%+ peak collapse par)
                 r["c_signal"] = "🔴 EXIT / WEAK"
+            else:
+                r["c_signal"] = "NEUTRAL"
+        elif "BEARISH" in market_bias:
+            # Bearish trend mein active calls jahan peak se 12%+ drop ho chuka ho
+            if r["c_peak"] > 0 and (r["c_peak"] - r["c_ltp"]) / r["c_peak"] >= 0.12 and r["c_vol"] >= 50000 and r["c_ltp"] >= 15.0:
+                r["c_signal"] = "🔴 EXIT / WEAK"
+            else:
+                r["c_signal"] = "NEUTRAL"
         else:
-            # Opposite trend / weak liquidity / decay
-            r["c_signal"] = "🔴 EXIT / WEAK"
+            r["c_signal"] = "NEUTRAL"
 
         # === PUT SIDE EVALUATION ===
         p_tradeable = r["p_delta_valid"] and r["p_ltp"] >= 8.0 and r["p_spread"] <= 0.05 and r["p_oi"] >= 10000
@@ -479,7 +486,7 @@ if spot_price > 0 and chain_data:
                 (r["p_oi"] >= 25000) and
                 (r["p_spread"] <= 0.025) and
                 (r["p_iv"] <= 60.0 or r["p_iv"] == 0.0) and
-                (0.12 <= r["p_delta"] <= 0.55) and
+                (0.10 <= r["p_delta"] <= 0.55) and
                 (overall_pcr <= 1.05)
             )
 
@@ -487,19 +494,28 @@ if spot_price > 0 and chain_data:
             p_is_rocket = (
                 scalp_mode and
                 (0.08 <= r["p_delta"] <= 0.40) and
-                (r["p_vol"] >= p_vol_high * 0.85) and
+                (r["p_vol"] >= p_vol_high * 0.80) and
                 (r["p_spread"] <= 0.04) and
-                (min_budget <= r["p_ltp"] <= (max_budget * 1.25))
+                (min_budget <= r["p_ltp"] <= (max_budget * 1.35))
             )
 
             if p_is_best:
                 r["p_signal"] = "🏆 BEST STRIKE"
             elif p_is_rocket:
                 r["p_signal"] = "🚀 ROCKET MOVE"
-            else:
+            elif r["p_peak"] > 0 and (r["p_peak"] - r["p_ltp"]) / r["p_peak"] >= 0.12 and r["p_vol"] >= 50000:
+                # 3) EXIT / WEAK
                 r["p_signal"] = "🔴 EXIT / WEAK"
+            else:
+                r["p_signal"] = "NEUTRAL"
+        elif "BULLISH" in market_bias:
+            # Bullish trend mein active puts jahan peak se 12%+ drop ho chuka ho
+            if r["p_peak"] > 0 and (r["p_peak"] - r["p_ltp"]) / r["p_peak"] >= 0.12 and r["p_vol"] >= 50000 and r["p_ltp"] >= 15.0:
+                r["p_signal"] = "🔴 EXIT / WEAK"
+            else:
+                r["p_signal"] = "NEUTRAL"
         else:
-            r["p_signal"] = "🔴 EXIT / WEAK"
+            r["p_signal"] = "NEUTRAL"
 
         if not r["c_delta_valid"]:
             r["c_signal"] = "NO DATA"
