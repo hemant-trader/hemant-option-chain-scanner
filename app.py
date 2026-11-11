@@ -35,42 +35,69 @@ INDEX_CONFIG = {
     "SENSEX": {"key": "BSE_INDEX|SENSEX", "step": 100},
 }
 
-# ----------------- ULTRA-COMPACT CSS FOR LAPTOP SCREEN -----------------
+# ----------------- ULTRA-COMPACT CSS & ATM FLASHING ANIMATION -----------------
 st.markdown("""
 <style>
-/* Streamlit standard padding reduce for single screen fit */
 .block-container {
-    padding-top: 1rem !important;
+    padding-top: 0.8rem !important;
     padding-bottom: 0.5rem !important;
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
+    padding-left: 0.8rem !important;
+    padding-right: 0.8rem !important;
 }
 @keyframes pulseGreen {
     0% { background-color: rgba(46, 204, 113, 0.20); border-color: #2ecc71; }
-    50% { background-color: rgba(46, 204, 113, 0.55); border-color: #00ff7f; }
+    50% { background-color: rgba(46, 204, 113, 0.60); border-color: #00ff7f; }
     100% { background-color: rgba(46, 204, 113, 0.20); border-color: #2ecc71; }
 }
 @keyframes pulseGold {
     0% { background-color: rgba(255, 215, 0, 0.20); border-color: #ffd700; }
-    50% { background-color: rgba(255, 215, 0, 0.55); border-color: #ffaa00; }
+    50% { background-color: rgba(255, 215, 0, 0.60); border-color: #ffaa00; }
     100% { background-color: rgba(255, 215, 0, 0.20); border-color: #ffd700; }
 }
 @keyframes pulseCyan {
     0% { background-color: rgba(0, 255, 204, 0.20); border-color: #00ffcc; }
-    50% { background-color: rgba(0, 255, 204, 0.55); border-color: #55ffff; }
+    50% { background-color: rgba(0, 255, 204, 0.60); border-color: #55ffff; }
     100% { background-color: rgba(0, 255, 204, 0.20); border-color: #00ffcc; }
 }
 @keyframes pulseRed {
     0% { background-color: rgba(231, 76, 60, 0.20); border-color: #e74c3c; }
-    50% { background-color: rgba(231, 76, 60, 0.55); border-color: #ff3838; }
+    50% { background-color: rgba(231, 76, 60, 0.60); border-color: #ff3838; }
     100% { background-color: rgba(231, 76, 60, 0.20); border-color: #e74c3c; }
 }
+
+/* Continuous Flashing Glow for ATM Strike Cell */
+@keyframes atmPulseGlow {
+    0% { 
+        background-color: #003838; 
+        color: #00ffcc; 
+        box-shadow: inset 0 0 4px #00ffcc; 
+        font-weight: 900; 
+    }
+    50% { 
+        background-color: #007366; 
+        color: #ffffff; 
+        box-shadow: inset 0 0 10px #00ffff, 0 0 12px #00ffcc; 
+        font-weight: 900; 
+    }
+    100% { 
+        background-color: #003838; 
+        color: #00ffcc; 
+        box-shadow: inset 0 0 4px #00ffcc; 
+        font-weight: 900; 
+    }
+}
+.atm-flash-cell {
+    animation: atmPulseGlow 1.2s infinite ease-in-out !important;
+    border-left: 2px solid #00ffcc !important;
+    border-right: 2px solid #00ffcc !important;
+    font-size: 13.5px !important;
+}
+
 .pre-alert-flash { animation: pulseGreen 1.4s infinite; font-weight: bold; }
 .budget-flash { animation: pulseGold 1.5s infinite; font-weight: bold; }
 .otm-flash { animation: pulseCyan 1.3s infinite; font-weight: bold; }
 .exit-flash { animation: pulseRed 1.1s infinite; font-weight: bold; }
 
-/* Table Compact Styling */
 .compact-opt-table {
     width: 100%;
     border-collapse: collapse;
@@ -96,7 +123,7 @@ st.markdown("""
 }
 .badge-tag {
     display: inline-block;
-    padding: 1px 4px !important;
+    padding: 1.5px 5px !important;
     border-radius: 3px;
     font-size: 9.8px !important;
     white-space: nowrap;
@@ -164,7 +191,7 @@ auto_refresh = st.sidebar.checkbox("Auto Refresh (3s)", value=True)
 st.sidebar.markdown("---")
 st.sidebar.subheader("⚡ Scalper Range & Budget")
 min_budget = st.sidebar.number_input("Min Premium (₹)", min_value=5, max_value=200, value=20, step=5)
-max_budget = st.sidebar.number_input("Max Premium (₹)", min_value=50, max_value=1200, value=350, step=25)
+max_budget = st.sidebar.number_input("Max Premium (₹)", min_value=50, max_value=1500, value=350, step=25)
 scalp_mode = st.sidebar.toggle("🚀 Aggressive OTM Scalp Mode", value=True)
 
 st.sidebar.markdown("---")
@@ -173,13 +200,13 @@ user_entry_price = st.sidebar.number_input("Aapka Entry Price (₹)", min_value=
 target_strike = st.sidebar.number_input("Active Strike (Track karne ke liye)", min_value=0, value=0, step=50)
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("💡 Signal Guide")
+st.sidebar.subheader("💡 Signal Precision Guide")
 st.sidebar.markdown("""
-- 🚀 **OTM 5M BUY**: Fast momentum (Delta 0.15–0.40) + Breakout Volume.
-- 💎 **BUDGET BUY**: ₹20–₹350 me Institutional Value Accumulation.
-- 🟢 **CONFIRMED BUY**: 5-Min trend aligned + Strong Greeks.
-- ⚡ **5M PRE-ALERT**: Live momentum volume spike.
-- 🔴 **EXIT / BOOK**: Opposite trend / 15%+ drop from session high.
+- 🚀 **OTM 5M BUY**: Fast Scalp OTM (Delta 0.15–0.38 + Top Breakout Volume).
+- 💎 **BUDGET BUY**: Best Value Pick inside ₹20–₹350 band.
+- 🟢 **CONFIRMED BUY**: High Conviction Trend + Institutional OI.
+- ⚡ **5M PRE-ALERT**: Early momentum volume surge.
+- 🔴 **EXIT / BOOK**: 12%+ drop from session high on opposite trend.
 """)
 
 st.sidebar.markdown("---")
@@ -274,7 +301,7 @@ spot_price = get_spot(inst_key, token)
 expiries = get_expiries(inst_key, token)
 candle_df = get_5m_candles(inst_key, token)
 
-# --- 5-Minute Technical Indicators ---
+# --- 5-Minute Technical Indicators Engine ---
 market_bias = "NEUTRAL ⚪"
 ema_9 = ema_21 = rsi_14 = 0.0
 
@@ -294,13 +321,11 @@ if not candle_df.empty and len(candle_df) >= 22:
     rsi_14 = last_closed["rsi_14"]
     c_close = last_closed["close"]
 
-    # Trend Determination
     if c_close > ema_9 and rsi_14 >= 50:
         market_bias = "5M BULLISH 🟢"
     elif c_close < ema_9 and rsi_14 <= 50:
         market_bias = "5M BEARISH 🔴"
 else:
-    # Fallback to spot history if intraday candles not yet loaded
     if "spot_hist" not in st.session_state:
         st.session_state["spot_hist"] = []
     st.session_state["spot_hist"].append(spot_price)
@@ -321,7 +346,6 @@ chain_data = get_chain(inst_key, selected_expiry, token)
 if spot_price > 0 and chain_data:
     atm_strike = round(spot_price / step_size) * step_size
 
-    # Compact Status Banner
     bias_color = "#2ecc71" if "BULLISH" in market_bias else ("#e74c3c" if "BEARISH" in market_bias else "#94a3b8")
     st.markdown(f"""
     <div style="background-color:#111622; border:1px solid #1f293d; border-radius:6px; padding:6px 14px; display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px;">
@@ -338,6 +362,9 @@ if spot_price > 0 and chain_data:
 
     if "peaks" not in st.session_state:
         st.session_state["peaks"] = {}
+
+    all_c_vols = []
+    all_p_vols = []
 
     for row in chain_data:
         stk = float(row.get("strike_price", 0.0))
@@ -375,7 +402,6 @@ if spot_price > 0 and chain_data:
         c_type = "ATM" if stk == atm_strike else ("ITM" if stk < atm_strike else "OTM")
         p_type = "ATM" if stk == atm_strike else ("OTM" if stk < atm_strike else "ITM")
 
-        # Session peaks tracking
         if stk not in st.session_state["peaks"]:
             st.session_state["peaks"][stk] = {"call": c_ltp, "put": p_ltp}
         else:
@@ -385,76 +411,8 @@ if spot_price > 0 and chain_data:
         c_peak = st.session_state["peaks"][stk]["call"]
         p_peak = st.session_state["peaks"][stk]["put"]
 
-        # ----------------- RIGOROUS SIGNAL ENGINE -----------------
-        # Call Side Evaluation
-        c_signal = "NEUTRAL"
-        if c_ltp >= 8.0 and c_vol >= 10000 and c_oi >= 2000 and c_spread <= 0.06 and c_delta_valid:
-            vol_score = min(35.0, (math.log10(max(10, c_vol)) / 6.0) * 35.0)
-            oi_score = min(20.0, (math.log10(max(10, c_oi)) / 5.5) * 20.0)
-            delta_target = 0.55 if c_type == "ITM" else (0.50 if c_type == "ATM" else 0.30)
-            delta_score = max(0.0, 1.0 - (abs(c_delta - delta_target) / 0.28)) * 25.0
-            spread_score = max(0.0, 1.0 - (c_spread / 0.06)) * 20.0
-            c_score = vol_score + oi_score + delta_score + spread_score
-
-            c_is_budget = (min_budget <= c_ltp <= max_budget)
-            c_is_otm_scalp = scalp_mode and (c_type == "OTM") and (0.15 <= c_delta <= 0.40) and (c_vol >= 50000)
-
-            # DIRECTION GATE: Buy signals appear only when market is BULLISH or neutral
-            if "BULLISH" in market_bias:
-                if c_is_otm_scalp and c_score >= 54.0:
-                    c_signal = "🚀 OTM 5M BUY"
-                elif c_is_budget and c_score >= 56.0:
-                    c_signal = "💎 BUDGET BUY"
-                elif c_score >= 64.0:
-                    c_signal = "🟢 CONFIRMED BUY"
-                elif c_score >= 48.0 and (c_is_budget or c_is_otm_scalp):
-                    c_signal = "⚡ 5M PRE-ALERT"
-            elif "BEARISH" in market_bias:
-                # When market is Bearish, Calls lose value
-                if c_peak > 0 and (c_peak - c_ltp) / c_peak >= 0.12:
-                    c_signal = "🔴 EXIT/BOOK"
-        elif not c_delta_valid:
-            c_signal = "NO DATA"
-
-        # Put Side Evaluation
-        p_signal = "NEUTRAL"
-        if p_ltp >= 8.0 and p_vol >= 10000 and p_oi >= 2000 and p_spread <= 0.06 and p_delta_valid:
-            vol_score = min(35.0, (math.log10(max(10, p_vol)) / 6.0) * 35.0)
-            oi_score = min(20.0, (math.log10(max(10, p_oi)) / 5.5) * 20.0)
-            delta_target = 0.55 if p_type == "ITM" else (0.50 if p_type == "ATM" else 0.30)
-            delta_score = max(0.0, 1.0 - (abs(p_delta - delta_target) / 0.28)) * 25.0
-            spread_score = max(0.0, 1.0 - (p_spread / 0.06)) * 20.0
-            p_score = vol_score + oi_score + delta_score + spread_score
-
-            p_is_budget = (min_budget <= p_ltp <= max_budget)
-            p_is_otm_scalp = scalp_mode and (p_type == "OTM") and (0.15 <= p_delta <= 0.40) and (p_vol >= 50000)
-
-            # DIRECTION GATE: Buy signals appear only when market is BEARISH or neutral
-            if "BEARISH" in market_bias:
-                if p_is_otm_scalp and p_score >= 54.0:
-                    p_signal = "🚀 OTM 5M BUY"
-                elif p_is_budget and p_score >= 56.0:
-                    p_signal = "💎 BUDGET BUY"
-                elif p_score >= 64.0:
-                    p_signal = "🟢 CONFIRMED BUY"
-                elif p_score >= 48.0 and (p_is_budget or p_is_otm_scalp):
-                    p_signal = "⚡ 5M PRE-ALERT"
-            elif "BULLISH" in market_bias:
-                # When market is Bullish, Puts lose value
-                if p_peak > 0 and (p_peak - p_ltp) / p_peak >= 0.12:
-                    p_signal = "🔴 EXIT/BOOK"
-        elif not p_delta_valid:
-            p_signal = "NO DATA"
-
-        # Trade Tracker for Active Strike
-        if target_strike > 0 and stk == target_strike and user_entry_price > 0:
-            active_ltp = c_ltp if "BULLISH" in market_bias else p_ltp
-            pnl_pct = ((active_ltp - user_entry_price) / user_entry_price) * 100.0
-            st.sidebar.markdown(f"**Tracked Strike {int(stk)}:** LTP ₹{active_ltp:.1f} | PnL: `{pnl_pct:+.1f}%`")
-            if pnl_pct >= 10.0:
-                st.sidebar.markdown('<span class="budget-flash badge-tag">💰 BOOK PROFIT ZONE</span>', unsafe_allow_html=True)
-            elif pnl_pct <= -6.0:
-                st.sidebar.markdown('<span class="exit-flash badge-tag">🚨 EXIT ALERT / STOPLOSS</span>', unsafe_allow_html=True)
+        all_c_vols.append(c_vol)
+        all_p_vols.append(p_vol)
 
         rows.append({
             "strike": stk,
@@ -465,14 +423,76 @@ if spot_price > 0 and chain_data:
             "c_oi": c_oi,
             "c_delta": c_delta,
             "c_delta_valid": c_delta_valid,
-            "c_signal": c_signal,
+            "c_spread": c_spread,
+            "c_peak": c_peak,
             "p_ltp": p_ltp,
             "p_vol": p_vol,
             "p_oi": p_oi,
             "p_delta": p_delta,
             "p_delta_valid": p_delta_valid,
-            "p_signal": p_signal,
+            "p_spread": p_spread,
+            "p_peak": p_peak,
+            "c_signal": "NEUTRAL",
+            "p_signal": "NEUTRAL"
         })
+
+    # Volume Benchmarks (Percentiles)
+    c_top_vol_85 = np.percentile(all_c_vols, 85) if len(all_c_vols) > 0 else 100000
+    c_top_vol_70 = np.percentile(all_c_vols, 70) if len(all_c_vols) > 0 else 50000
+
+    p_top_vol_85 = np.percentile(all_p_vols, 85) if len(all_p_vols) > 0 else 100000
+    p_top_vol_70 = np.percentile(all_p_vols, 70) if len(all_p_vols) > 0 else 50000
+
+    # ----------------- INDEPENDENT QUALIFYING CHECKS (NO DISTANCE LOCK) -----------------
+    for r in rows:
+        # === CALL SIDE EVALUATION ===
+        c_valid = r["c_delta_valid"] and r["c_ltp"] >= 10.0 and r["c_spread"] <= 0.05 and r["c_oi"] >= 15000
+
+        if c_valid and "BULLISH" in market_bias:
+            if (0.35 <= r["c_delta"] <= 0.65) and (r["c_vol"] >= c_top_vol_85) and (r["c_spread"] <= 0.035):
+                r["c_signal"] = "🟢 CONFIRMED BUY"
+            elif scalp_mode and (0.16 <= r["c_delta"] <= 0.35) and (r["c_vol"] >= c_top_vol_70):
+                r["c_signal"] = "🚀 OTM 5M BUY"
+            elif (min_budget <= r["c_ltp"] <= max_budget) and (r["c_vol"] >= c_top_vol_70) and (r["c_delta"] >= 0.20):
+                r["c_signal"] = "💎 BUDGET BUY"
+            elif r["c_vol"] >= c_top_vol_70 and (0.20 <= r["c_delta"] <= 0.60):
+                r["c_signal"] = "⚡ 5M PRE-ALERT"
+        elif "BEARISH" in market_bias:
+            if r["c_peak"] > 0 and (r["c_peak"] - r["c_ltp"]) / r["c_peak"] >= 0.12 and r["c_vol"] >= 30000:
+                r["c_signal"] = "🔴 EXIT / WEAK"
+
+        # === PUT SIDE EVALUATION ===
+        p_valid = r["p_delta_valid"] and r["p_ltp"] >= 10.0 and r["p_spread"] <= 0.05 and r["p_oi"] >= 15000
+
+        if p_valid and "BEARISH" in market_bias:
+            if (0.35 <= r["p_delta"] <= 0.65) and (r["p_vol"] >= p_top_vol_85) and (r["p_spread"] <= 0.035):
+                r["p_signal"] = "🟢 CONFIRMED BUY"
+            elif scalp_mode and (0.16 <= r["p_delta"] <= 0.35) and (r["p_vol"] >= p_top_vol_70):
+                r["p_signal"] = "🚀 OTM 5M BUY"
+            elif (min_budget <= r["p_ltp"] <= max_budget) and (r["p_vol"] >= p_top_vol_70) and (r["p_delta"] >= 0.20):
+                r["p_signal"] = "💎 BUDGET BUY"
+            elif r["p_vol"] >= p_top_vol_70 and (0.20 <= r["p_delta"] <= 0.60):
+                r["p_signal"] = "⚡ 5M PRE-ALERT"
+        elif "BULLISH" in market_bias:
+            if r["p_peak"] > 0 and (r["p_peak"] - r["p_ltp"]) / r["p_peak"] >= 0.12 and r["p_vol"] >= 30000:
+                r["p_signal"] = "🔴 EXIT / WEAK"
+
+        if not r["c_delta_valid"]:
+            r["c_signal"] = "NO DATA"
+        if not r["p_delta_valid"]:
+            r["p_signal"] = "NO DATA"
+
+    # Trade Tracker Alert for Active Tracked Strike
+    if target_strike > 0 and user_entry_price > 0:
+        match_row = next((x for x in rows if x["strike"] == target_strike), None)
+        if match_row:
+            active_ltp = match_row["c_ltp"] if "BULLISH" in market_bias else match_row["p_ltp"]
+            pnl_pct = ((active_ltp - user_entry_price) / user_entry_price) * 100.0
+            st.sidebar.markdown(f"**Tracked Strike {int(target_strike)}:** LTP ₹{active_ltp:.1f} | PnL: `{pnl_pct:+.1f}%`")
+            if pnl_pct >= 10.0:
+                st.sidebar.markdown('<span class="budget-flash badge-tag">💰 BOOK PROFIT ZONE</span>', unsafe_allow_html=True)
+            elif pnl_pct <= -6.0:
+                st.sidebar.markdown('<span class="exit-flash badge-tag">🚨 EXIT ALERT / STOPLOSS</span>', unsafe_allow_html=True)
 
     focused = sorted(rows, key=lambda x: x["strike"])
 
@@ -499,13 +519,13 @@ if spot_price > 0 and chain_data:
         # Call Badge Formatting
         c_sig = r["c_signal"]
         if "🚀 OTM" in c_sig:
-            c_style = "background-color:rgba(0, 255, 204, 0.18); color:#00ffcc; font-weight:bold; border-left:3px solid #00ffcc;"
+            c_style = "background-color:rgba(0, 255, 204, 0.20); color:#00ffcc; font-weight:bold; border-left:3px solid #00ffcc;"
             c_badge = f'<span class="otm-flash badge-tag" style="background-color:#032924; border:1px solid #00ffcc;">{c_sig}</span>'
         elif "💎 BUDGET" in c_sig:
-            c_style = "background-color:rgba(255, 215, 0, 0.18); color:#ffd700; font-weight:bold; border-left:3px solid #ffd700;"
+            c_style = "background-color:rgba(255, 215, 0, 0.20); color:#ffd700; font-weight:bold; border-left:3px solid #ffd700;"
             c_badge = f'<span class="budget-flash badge-tag" style="background-color:#2a2505; border:1px solid #ffd700;">{c_sig}</span>'
         elif "🟢 CONFIRMED" in c_sig:
-            c_style = "background-color:rgba(46, 204, 113, 0.22); color:#2ecc71; font-weight:bold; border-left:3px solid #2ecc71;"
+            c_style = "background-color:rgba(46, 204, 113, 0.25); color:#2ecc71; font-weight:bold; border-left:3px solid #2ecc71;"
             c_badge = f'<span class="badge-tag" style="background-color:#163828; border:1px solid #2ecc71;">{c_sig}</span>'
         elif "⚡ 5M PRE-ALERT" in c_sig:
             c_style = "color:#2ecc71;"
@@ -520,13 +540,13 @@ if spot_price > 0 and chain_data:
         # Put Badge Formatting
         p_sig = r["p_signal"]
         if "🚀 OTM" in p_sig:
-            p_style = "background-color:rgba(0, 255, 204, 0.18); color:#00ffcc; font-weight:bold; border-right:3px solid #00ffcc;"
+            p_style = "background-color:rgba(0, 255, 204, 0.20); color:#00ffcc; font-weight:bold; border-right:3px solid #00ffcc;"
             p_badge = f'<span class="otm-flash badge-tag" style="background-color:#032924; border:1px solid #00ffcc;">{p_sig}</span>'
         elif "💎 BUDGET" in p_sig:
-            p_style = "background-color:rgba(255, 215, 0, 0.18); color:#ffd700; font-weight:bold; border-right:3px solid #ffd700;"
+            p_style = "background-color:rgba(255, 215, 0, 0.20); color:#ffd700; font-weight:bold; border-right:3px solid #ffd700;"
             p_badge = f'<span class="budget-flash badge-tag" style="background-color:#2a2505; border:1px solid #ffd700;">{p_sig}</span>'
         elif "🟢 CONFIRMED" in p_sig:
-            p_style = "background-color:rgba(46, 204, 113, 0.22); color:#2ecc71; font-weight:bold; border-right:3px solid #2ecc71;"
+            p_style = "background-color:rgba(46, 204, 113, 0.25); color:#2ecc71; font-weight:bold; border-right:3px solid #2ecc71;"
             p_badge = f'<span class="badge-tag" style="background-color:#163828; border:1px solid #2ecc71;">{p_sig}</span>'
         elif "⚡ 5M PRE-ALERT" in p_sig:
             p_style = "color:#2ecc71;"
@@ -538,7 +558,12 @@ if spot_price > 0 and chain_data:
             p_style = "color:#64748b;"
             p_badge = f'<span style="color:#475569; font-size:10px;">{r["p_type"]}</span>'
 
-        mid_bg = "#1e293b; font-weight:bold; color:#64ffda;" if stk == atm_strike else "#0f172a; color:#f8fafc;"
+        # Continuous Flashing for ATM Strike Number
+        if stk == atm_strike:
+            strike_cell = f'<td class="atm-flash-cell">{int(stk)} <span style="font-size:9px;">[ATM]</span></td>'
+        else:
+            strike_cell = f'<td style="background-color:#0f172a; font-size:12px; font-weight:bold; color:#f8fafc;">{int(stk)}</td>'
+
         c_delta_disp = f"{r['c_delta']:.2f}" if r["c_delta_valid"] else "-"
         p_delta_disp = f"{r['p_delta']:.2f}" if r["p_delta_valid"] else "-"
 
@@ -549,7 +574,7 @@ if spot_price > 0 and chain_data:
             f'<td style="{c_style}">₹{r["c_ltp"]:.1f}</td>'
             f'<td style="{c_style}">{r["c_vol"]:,}</td>'
             f'<td style="{c_style}">{r["c_oi"]:,}</td>'
-            f'<td style="background-color:{mid_bg}; font-size:12.5px; font-weight:bold;">{int(stk)}</td>'
+            f'{strike_cell}'
             f'<td style="{p_style}">{r["p_oi"]:,}</td>'
             f'<td style="{p_style}">{r["p_vol"]:,}</td>'
             f'<td style="{p_style}">₹{r["p_ltp"]:.1f}</td>'
