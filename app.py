@@ -39,22 +39,28 @@ INDEX_CONFIG = {
 st.markdown("""
 <style>
 @keyframes pulseGreen {
-    0% { background-color: rgba(46, 204, 113, 0.15); border-color: #2ecc71; }
-    50% { background-color: rgba(46, 204, 113, 0.45); border-color: #00ff7f; }
-    100% { background-color: rgba(46, 204, 113, 0.15); border-color: #2ecc71; }
+    0% { background-color: rgba(46, 204, 113, 0.20); border-color: #2ecc71; }
+    50% { background-color: rgba(46, 204, 113, 0.50); border-color: #00ff7f; }
+    100% { background-color: rgba(46, 204, 113, 0.20); border-color: #2ecc71; }
 }
 @keyframes pulseGold {
-    0% { background-color: rgba(255, 215, 0, 0.15); border-color: #ffd700; }
-    50% { background-color: rgba(255, 215, 0, 0.45); border-color: #ffaa00; }
-    100% { background-color: rgba(255, 215, 0, 0.15); border-color: #ffd700; }
+    0% { background-color: rgba(255, 215, 0, 0.20); border-color: #ffd700; }
+    50% { background-color: rgba(255, 215, 0, 0.50); border-color: #ffaa00; }
+    100% { background-color: rgba(255, 215, 0, 0.20); border-color: #ffd700; }
+}
+@keyframes pulseCyan {
+    0% { background-color: rgba(0, 255, 204, 0.20); border-color: #00ffcc; }
+    50% { background-color: rgba(0, 255, 204, 0.55); border-color: #55ffff; }
+    100% { background-color: rgba(0, 255, 204, 0.20); border-color: #00ffcc; }
 }
 @keyframes pulseRed {
-    0% { background-color: rgba(231, 76, 60, 0.15); border-color: #e74c3c; }
-    50% { background-color: rgba(231, 76, 60, 0.50); border-color: #ff3838; }
-    100% { background-color: rgba(231, 76, 60, 0.15); border-color: #e74c3c; }
+    0% { background-color: rgba(231, 76, 60, 0.20); border-color: #e74c3c; }
+    50% { background-color: rgba(231, 76, 60, 0.55); border-color: #ff3838; }
+    100% { background-color: rgba(231, 76, 60, 0.20); border-color: #e74c3c; }
 }
 .pre-alert-flash { animation: pulseGreen 1.4s infinite; font-weight: bold; }
 .budget-flash { animation: pulseGold 1.5s infinite; font-weight: bold; }
+.otm-flash { animation: pulseCyan 1.3s infinite; font-weight: bold; }
 .exit-flash { animation: pulseRed 1.1s infinite; font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
@@ -98,7 +104,6 @@ def fetch_access_token(code):
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = load_token_disk()
 
-# Silent OAuth Code Capture on URL Callback
 query_params = st.query_params
 auth_code = query_params.get("code", None)
 
@@ -131,11 +136,11 @@ target_strike = st.sidebar.number_input("Active Strike (Track karne ke liye)", m
 st.sidebar.markdown("---")
 st.sidebar.subheader("💡 Signal Guide")
 st.sidebar.markdown("""
-- 💎 **BUDGET PICK**: ₹20–₹350 me high momentum strike.
-- 🚀 **OTM SCALP**: Dynamic Delta (0.15–0.38) with 5M volume breakout.
-- 🟢 **CONFIRMED 5M BUY**: 5-Min Candle close + EMA/RSI confirmed.
-- ⚡ **PRE-ALERT**: Live candle momentum build up.
-- 🔴 **BOOK PROFIT / EXIT**: Momentum peak decline / Trend reversal.
+- 💎 **BUDGET BUY**: ₹20–₹350 me high momentum strike.
+- 🚀 **OTM 5M BUY**: Dynamic Delta (0.15–0.40) fast momentum breakout.
+- 🟢 **CONFIRMED 5M BUY**: 5-Min trend aligned + strong volume/OI.
+- ⚡ **5M PRE-ALERT**: Live setup momentum trigger.
+- 🔴 **EXIT / BOOK**: Strike momentum collapse / trend decline.
 """)
 
 st.sidebar.markdown("---")
@@ -167,7 +172,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 if not token:
-    st.info("👋 कृपया जारी रखने के लिए बाईं साइडबार से Upstox में लॉगिन करें। (लॉगिन के बाद कोई कोड डालने की जरूरत नहीं)")
+    st.info("👋 कृपया जारी रखने के लिए बाईं साइडबार से Upstox में लॉगिन करें।")
     st.stop()
 
 # ----------------- DATA & 5-MIN CANDLE FETCHING -----------------
@@ -233,13 +238,11 @@ candle_df = get_5m_candles(inst_key, token)
 # --- 5-Minute Technical Indicators ---
 market_bias = "NEUTRAL ⚪"
 ema_9 = ema_21 = rsi_14 = 0.0
-candle_closed_bullish = candle_closed_bearish = False
 
 if not candle_df.empty and len(candle_df) >= 22:
     candle_df["ema_9"] = candle_df["close"].ewm(span=9, adjust=False).mean()
     candle_df["ema_21"] = candle_df["close"].ewm(span=21, adjust=False).mean()
     
-    # RSI 14
     delta = candle_df["close"].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
@@ -252,12 +255,10 @@ if not candle_df.empty and len(candle_df) >= 22:
     rsi_14 = last_closed["rsi_14"]
     c_close = last_closed["close"]
 
-    if c_close > ema_9 > ema_21 and rsi_14 >= 52:
+    if c_close >= ema_9 and rsi_14 >= 50:
         market_bias = "5M BULLISH 🟢"
-        candle_closed_bullish = True
-    elif c_close < ema_9 < ema_21 and rsi_14 <= 48:
+    elif c_close <= ema_9 and rsi_14 <= 50:
         market_bias = "5M BEARISH 🔴"
-        candle_closed_bearish = True
 
 if not expiries:
     st.warning("⚠️ एक्सपायरी कॉन्ट्रैक्ट्स लोड हो रहे हैं...")
@@ -275,15 +276,14 @@ if spot_price > 0 and chain_data:
     <div style="background-color:#111622; border:1px solid #1f293d; border-radius:8px; padding:10px 18px; display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
         <div><span style="color:#8892b0; font-size:11px;">SPOT PRICE</span><br><b style="font-size:20px; color:#ffffff;">₹{spot_price:,.2f}</b></div>
         <div><span style="color:#8892b0; font-size:11px;">ATM STRIKE</span><br><b style="font-size:19px; color:#64ffda;">{atm_strike}</b></div>
-        <div><span style="color:#8892b0; font-size:11px;">5M RSI (14)</span><br><b style="font-size:18px; color:#ffd700;">{rsi_14:.1f}</b></div>
+        <div><span style="color:#8892b0; font-size:11px;">5M RSI</span><br><b style="font-size:18px; color:#ffd700;">{rsi_14:.1f}</b></div>
         <div><span style="color:#8892b0; font-size:11px;">5M TREND</span><br><b style="font-size:17px; color:{'#2ecc71' if 'BULLISH' in market_bias else ('#e74c3c' if 'BEARISH' in market_bias else '#94a3b8')};">{market_bias}</b></div>
-        <div><span style="color:#8892b0; font-size:11px;">EXPIRY</span><br><b style="font-size:17px; color:#ccd6f6;">{selected_expiry}</b></div>
+        <div><span style="color:#8892b0; font-size:11px;">BUDGET SCANNER</span><br><b style="font-size:16px; color:#ffd700;">₹{min_budget} - ₹{max_budget}</b></div>
     </div>
     """, unsafe_allow_html=True)
 
     rows = []
 
-    # Store peak prices in session state for momentum profit-booking
     if "peaks" not in st.session_state:
         st.session_state["peaks"] = {}
 
@@ -303,7 +303,6 @@ if spot_price > 0 and chain_data:
         c_vol = int(c_mkt.get("volume", 0) or 0)
         c_oi = int(c_mkt.get("oi", 0) or 0)
 
-        # Delta validation: NO ESTIMATED DELTA ALLOWED FOR BUY SIGNALS
         c_delta_raw = c_grk.get("delta")
         c_delta_valid = (c_delta_raw is not None and float(c_delta_raw) != 0.0)
         c_delta = abs(float(c_delta_raw)) if c_delta_valid else 0.0
@@ -318,14 +317,13 @@ if spot_price > 0 and chain_data:
         p_delta_valid = (p_delta_raw is not None and float(p_delta_raw) != 0.0)
         p_delta = abs(float(p_delta_raw)) if p_delta_valid else 0.0
 
-        # Spread Filter: Disqualify high spreads
-        c_spread = ((c_ask - c_bid) / c_ltp) if (c_ltp > 0 and c_ask > 0 and c_ask >= c_bid) else 1.0
-        p_spread = ((p_ask - p_bid) / p_ltp) if (p_ltp > 0 and p_ask > 0 and p_ask >= p_bid) else 1.0
+        c_spread = ((c_ask - c_bid) / c_ltp) if (c_ltp > 0 and c_ask > 0 and c_ask >= c_bid) else 0.05
+        p_spread = ((p_ask - p_bid) / p_ltp) if (p_ltp > 0 and p_ask > 0 and p_ask >= p_bid) else 0.05
 
         c_type = "ATM" if stk == atm_strike else ("ITM" if stk < atm_strike else "OTM")
         p_type = "ATM" if stk == atm_strike else ("OTM" if stk < atm_strike else "ITM")
 
-        # Track Peaks for Active Strike
+        # Session peaks tracking
         if stk not in st.session_state["peaks"]:
             st.session_state["peaks"][stk] = {"call": c_ltp, "put": p_ltp}
         else:
@@ -335,73 +333,71 @@ if spot_price > 0 and chain_data:
         c_peak = st.session_state["peaks"][stk]["call"]
         p_peak = st.session_state["peaks"][stk]["put"]
 
-        # Call Scoring Logic (100 Pts)
+        # ----------------- BALANCED REAL-TIME SCORING -----------------
+        # Call Scoring Logic
         c_score = 0.0
         c_signal = "NEUTRAL"
-        if c_ltp >= 8.0 and c_vol >= 15000 and c_oi >= 5000 and c_spread <= 0.03 and c_delta_valid:
-            vol_score = min(25.0, (math.log10(max(10, c_vol)) / 6.0) * 25.0)
-            oi_score = min(15.0, (math.log10(max(10, c_oi)) / 5.5) * 15.0)
+        if c_ltp >= 8.0 and c_vol >= 10000 and c_oi >= 2000 and c_spread <= 0.06 and c_delta_valid:
+            vol_score = min(30.0, (math.log10(max(10, c_vol)) / 6.0) * 30.0)
+            oi_score = min(20.0, (math.log10(max(10, c_oi)) / 5.5) * 20.0)
             delta_target = 0.55 if c_type == "ITM" else (0.50 if c_type == "ATM" else 0.30)
-            delta_score = max(0.0, 1.0 - (abs(c_delta - delta_target) / 0.20)) * 25.0
-            spread_score = max(0.0, 1.0 - (c_spread / 0.03)) * 15.0
-            mom_score = 20.0 if candle_closed_bullish else (8.0 if "BULLISH" in market_bias else 0.0)
-            c_score = vol_score + oi_score + delta_score + spread_score + mom_score
+            delta_score = max(0.0, 1.0 - (abs(c_delta - delta_target) / 0.28)) * 30.0
+            spread_score = max(0.0, 1.0 - (c_spread / 0.06)) * 20.0
+            c_score = vol_score + oi_score + delta_score + spread_score
 
             c_is_budget = (min_budget <= c_ltp <= max_budget)
-            c_is_otm_scalp = scalp_mode and (c_type == "OTM") and (0.15 <= c_delta <= 0.38) and (c_vol >= 35000)
+            c_is_otm_scalp = scalp_mode and (c_type == "OTM") and (0.15 <= c_delta <= 0.40) and (c_vol >= 20000)
 
-            # Signal Hierarchy
-            if candle_closed_bullish and c_score >= 75.0:
-                if c_is_otm_scalp:
-                    c_signal = "🚀 OTM 5M BUY"
-                elif c_is_budget:
-                    c_signal = "💎 BUDGET BUY"
-                else:
-                    c_signal = "🟢 CONFIRMED BUY"
-            elif "BULLISH" in market_bias and c_score >= 60.0:
+            # Signal Priority Ladder (BUY and Scalp Signals First)
+            if c_is_otm_scalp and "BULLISH" in market_bias and c_score >= 52.0:
+                c_signal = "🚀 OTM 5M BUY"
+            elif c_is_budget and "BULLISH" in market_bias and c_score >= 54.0:
+                c_signal = "💎 BUDGET BUY"
+            elif "BULLISH" in market_bias and c_score >= 62.0:
+                c_signal = "🟢 CONFIRMED BUY"
+            elif c_score >= 46.0 and (c_is_budget or c_is_otm_scalp):
                 c_signal = "⚡ 5M PRE-ALERT"
-            elif candle_closed_bearish or (c_peak > 0 and (c_peak - c_ltp) / c_peak >= 0.06):
+            elif "BEARISH" in market_bias and c_peak > 0 and (c_peak - c_ltp) / c_peak >= 0.15:
                 c_signal = "🔴 EXIT/BOOK"
         elif not c_delta_valid:
             c_signal = "NO GREEK DATA"
 
-        # Put Scoring Logic (100 Pts)
+        # Put Scoring Logic
         p_score = 0.0
         p_signal = "NEUTRAL"
-        if p_ltp >= 8.0 and p_vol >= 15000 and p_oi >= 5000 and p_spread <= 0.03 and p_delta_valid:
-            vol_score = min(25.0, (math.log10(max(10, p_vol)) / 6.0) * 25.0)
-            oi_score = min(15.0, (math.log10(max(10, p_oi)) / 5.5) * 15.0)
+        if p_ltp >= 8.0 and p_vol >= 10000 and p_oi >= 2000 and p_spread <= 0.06 and p_delta_valid:
+            vol_score = min(30.0, (math.log10(max(10, p_vol)) / 6.0) * 30.0)
+            oi_score = min(20.0, (math.log10(max(10, p_oi)) / 5.5) * 20.0)
             delta_target = 0.55 if p_type == "ITM" else (0.50 if p_type == "ATM" else 0.30)
-            delta_score = max(0.0, 1.0 - (abs(p_delta - delta_target) / 0.20)) * 25.0
-            spread_score = max(0.0, 1.0 - (p_spread / 0.03)) * 15.0
-            mom_score = 20.0 if candle_closed_bearish else (8.0 if "BEARISH" in market_bias else 0.0)
-            p_score = vol_score + oi_score + delta_score + spread_score + mom_score
+            delta_score = max(0.0, 1.0 - (abs(p_delta - delta_target) / 0.28)) * 30.0
+            spread_score = max(0.0, 1.0 - (p_spread / 0.06)) * 20.0
+            p_score = vol_score + oi_score + delta_score + spread_score
 
             p_is_budget = (min_budget <= p_ltp <= max_budget)
-            p_is_otm_scalp = scalp_mode and (p_type == "OTM") and (0.15 <= p_delta <= 0.38) and (p_vol >= 35000)
+            p_is_otm_scalp = scalp_mode and (p_type == "OTM") and (0.15 <= p_delta <= 0.40) and (p_vol >= 20000)
 
-            if candle_closed_bearish and p_score >= 75.0:
-                if p_is_otm_scalp:
-                    p_signal = "🚀 OTM 5M BUY"
-                elif p_is_budget:
-                    p_signal = "💎 BUDGET BUY"
-                else:
-                    p_signal = "🟢 CONFIRMED BUY"
-            elif "BEARISH" in market_bias and p_score >= 60.0:
+            # Signal Priority Ladder
+            if p_is_otm_scalp and "BEARISH" in market_bias and p_score >= 52.0:
+                p_signal = "🚀 OTM 5M BUY"
+            elif p_is_budget and "BEARISH" in market_bias and p_score >= 54.0:
+                p_signal = "💎 BUDGET BUY"
+            elif "BEARISH" in market_bias and p_score >= 62.0:
+                p_signal = "🟢 CONFIRMED BUY"
+            elif p_score >= 46.0 and (p_is_budget or p_is_otm_scalp):
                 p_signal = "⚡ 5M PRE-ALERT"
-            elif candle_closed_bullish or (p_peak > 0 and (p_peak - p_ltp) / p_peak >= 0.06):
+            elif "BULLISH" in market_bias and p_peak > 0 and (p_peak - p_ltp) / p_peak >= 0.15:
                 p_signal = "🔴 EXIT/BOOK"
         elif not p_delta_valid:
             p_signal = "NO GREEK DATA"
 
-        # Trade Tracker Alert for Active Strike
+        # Trade Tracker Alert for Active Tracked Strike
         if target_strike > 0 and stk == target_strike and user_entry_price > 0:
             active_ltp = c_ltp if "BULLISH" in market_bias else p_ltp
             pnl_pct = ((active_ltp - user_entry_price) / user_entry_price) * 100.0
             st.sidebar.markdown(f"**Tracked Strike {int(stk)}:** LTP ₹{active_ltp:.1f} | PnL: `{pnl_pct:+.1f}%`")
             if pnl_pct >= 12.0:
                 st.sidebar.markdown('<span class="budget-flash" style="padding:4px 8px; border-radius:4px;">💰 BOOK PROFIT ZONE</span>', unsafe_allow_html=True)
-            elif pnl_pct <= -7.0 or ("EXIT" in c_signal or "EXIT" in p_signal):
+            elif pnl_pct <= -6.0:
                 st.sidebar.markdown('<span class="exit-flash" style="padding:4px 8px; border-radius:4px;">🚨 EXIT ALERT / STOPLOSS</span>', unsafe_allow_html=True)
 
         rows.append({
@@ -422,7 +418,6 @@ if spot_price > 0 and chain_data:
             "p_signal": p_signal,
         })
 
-    # Show ALL strikes sorted ascending (No Truncation)
     focused = sorted(rows, key=lambda x: x["strike"])
 
     # ----------------- RENDER FULL OPTION MATRIX -----------------
@@ -448,10 +443,10 @@ if spot_price > 0 and chain_data:
         # Call Badge Styling
         c_sig = r["c_signal"]
         if "🚀 OTM" in c_sig:
-            c_style = "background-color:rgba(0, 255, 204, 0.18); color:#00ffcc; font-weight:bold; border-left:4px solid #00ffcc;"
-            c_badge = f'<span class="pre-alert-flash" style="background-color:#032924; border:1px solid #00ffcc; border-radius:4px; padding:2px 6px;">{c_sig}</span>'
+            c_style = "background-color:rgba(0, 255, 204, 0.20); color:#00ffcc; font-weight:bold; border-left:4px solid #00ffcc;"
+            c_badge = f'<span class="otm-flash" style="background-color:#032924; border:1px solid #00ffcc; border-radius:4px; padding:2px 6px;">{c_sig}</span>'
         elif "💎 BUDGET" in c_sig:
-            c_style = "background-color:rgba(255, 215, 0, 0.16); color:#ffd700; font-weight:bold; border-left:4px solid #ffd700;"
+            c_style = "background-color:rgba(255, 215, 0, 0.20); color:#ffd700; font-weight:bold; border-left:4px solid #ffd700;"
             c_badge = f'<span class="budget-flash" style="background-color:#2a2505; border:1px solid #ffd700; border-radius:4px; padding:2px 6px;">{c_sig}</span>'
         elif "🟢 CONFIRMED" in c_sig:
             c_style = "background-color:rgba(46, 204, 113, 0.25); color:#2ecc71; font-weight:bold; border-left:4px solid #2ecc71;"
@@ -469,10 +464,10 @@ if spot_price > 0 and chain_data:
         # Put Badge Styling
         p_sig = r["p_signal"]
         if "🚀 OTM" in p_sig:
-            p_style = "background-color:rgba(0, 255, 204, 0.18); color:#00ffcc; font-weight:bold; border-right:4px solid #00ffcc;"
-            p_badge = f'<span class="pre-alert-flash" style="background-color:#032924; border:1px solid #00ffcc; border-radius:4px; padding:2px 6px;">{p_sig}</span>'
+            p_style = "background-color:rgba(0, 255, 204, 0.20); color:#00ffcc; font-weight:bold; border-right:4px solid #00ffcc;"
+            p_badge = f'<span class="otm-flash" style="background-color:#032924; border:1px solid #00ffcc; border-radius:4px; padding:2px 6px;">{p_sig}</span>'
         elif "💎 BUDGET" in p_sig:
-            p_style = "background-color:rgba(255, 215, 0, 0.16); color:#ffd700; font-weight:bold; border-right:4px solid #ffd700;"
+            p_style = "background-color:rgba(255, 215, 0, 0.20); color:#ffd700; font-weight:bold; border-right:4px solid #ffd700;"
             p_badge = f'<span class="budget-flash" style="background-color:#2a2505; border:1px solid #ffd700; border-radius:4px; padding:2px 6px;">{p_sig}</span>'
         elif "🟢 CONFIRMED" in p_sig:
             p_style = "background-color:rgba(46, 204, 113, 0.25); color:#2ecc71; font-weight:bold; border-right:4px solid #2ecc71;"
